@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ocorrências nas Cidades</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        #reportForm {
+            margin-bottom: 20px;
+        }
+        .orange-button {
+            background-color: orange;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        .orange-button:hover {
+            background-color: darkorange;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="color: orange;">Cidades Inteligentes</h1>
+    <div id="reportForm">
+        <label for="occurrenceType">Tipo de Ocorrência:</label>
+        <select id="occurrenceType">
+            <option value="dengue">Foco de Mosquitos da Dengue</option>
+            <option value="covid">Foco de COVID-19</option>
+            <option value="sewage">Esgoto ao Céu Aberto</option>
+            <option value="unpavedRoad">Via sem Pavimento</option>
+            <option value="noStreetLights">Falta de Iluminação Pública</option>
+            <!-- Adicionei novos tipos de ocorrências -->
+        </select>
+        <input type="text" id="address" placeholder="Digite o endereço">
+        <button class="orange-button" onclick="reportOccurrence()">Reportar Ocorrência</button>
+        <button class="orange-button" onclick="zoomIn()">+</button>
+        <button class="orange-button" onclick="zoomOut()">-</button>
+        <button class="orange-button" onclick="centerMap()">Centralizar Mapa</button>
+        <button class="orange-button" onclick="showUserLocation()">Meu Local</button>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+    <script>
+        var platform = new H.service.Platform({
+            'apikey': 'GTiOwyjeq6Nck4wUzQq0yKlKbrdIN8Z8zB9Ny1gb5jM'
+        });
+
+        var defaultLayers = platform.createDefaultLayers();
+        var map = new H.Map(
+            document.getElementById('map'),
+            defaultLayers.vector.normal.map,
+            {
+                zoom: 12,
+                center: { lat: -14.235004, lng: -51.92528 } // Centro do Brasil
+            }
+        );
+
+        var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+        var ui = H.ui.UI.createDefault(map, defaultLayers);
+
+        var mapSettings = ui.getControl('mapsettings');
+        var zoom = ui.getControl('zoom');
+
+        var mobileControls = new H.ui.GroupControls([
+            zoom,
+            mapSettings
+        ]);
+
+        ui.addControl('mobileControls', mobileControls);
+
+        var isDragging = false;
+        var lastMousePosition = { x: 0, y: 0 };
+
+        map.addEventListener('pointerdown', function(event) {
+            isDragging = true;
+            lastMousePosition = map.screenToGeo(event.currentPointer.viewportX, event.currentPointer.viewportY);
+        });
+
+        map.addEventListener('pointermove', function(event) {
+            if (isDragging) {
+                var newMousePosition = map.screenToGeo(event.currentPointer.viewportX, event.currentPointer.viewportY);
+                var deltaX = newMousePosition.lng - lastMousePosition.lng;
+                var deltaY = newMousePosition.lat - lastMousePosition.lat;
+                map.setCenter({ lat: map.getCenter().lat + deltaY, lng: map.getCenter().lng + deltaX });
+                lastMousePosition = newMousePosition;
+            }
+        });
+
+        map.addEventListener('pointerup', function() {
+            isDragging = false;
+        });
+
+        function createIcon(color) {
+            var svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="${color}"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>`;
+            return new H.map.Icon(svgMarkup);
+        }
+
+        function addMarker(latitude, longitude, color) {
+            var marker = new H.map.Marker({ lat: latitude, lng: longitude }, { icon: createIcon(color) });
+            map.addObject(marker);
+        }
+
+        async function reportOccurrence() {
+            var occurrenceType = document.getElementById('occurrenceType').value;
+            var color = '';
+
+            switch (occurrenceType) {
+                case 'dengue':
+                    color = 'black'; // Alterado para preto para Foco de Mosquitos da Dengue
+                    break;
+                case 'covid':
+                    color = 'red'; // Mantido como vermelho para Foco de COVID-19
+                    break;
+                case 'sewage':
+                    color = 'brown'; // Esgoto ao Céu Aberto
+                    break;
+                case 'unpavedRoad':
+                    color = 'gray'; // Via sem Pavimento
+                    break;
+                case 'noStreetLights':
+                    color = 'yellow'; // Falta de Iluminação Pública
+                    break;
+                // Adicionei cores para os novos tipos de ocorrências
+                default:
+                    color = 'green'; // Mantido como verde para Outros
+                    break;
+            }
+
+            var address = document.getElementById('address').value;
+            try {
+                var geocodingService = platform.getSearchService();
+                var geocodeParams = {
+                    q: address
+                };
+                var result = await new Promise((resolve, reject) => {
+                    geocodingService.geocode(geocodeParams, resolve, reject);
+                });
+                var latitude = result.items[0].position.lat;
+                var longitude = result.items[0].position.lng;
+
+                addMarker(latitude, longitude, color);
+                map.setCenter({ lat: latitude, lng: longitude });
+            } catch (error) {
+                console.error('Erro ao geocodificar o endereço:', error);
+                alert('Erro ao geocodificar o endereço. Por favor, verifique e tente novamente.');
+            }
+        }
+
+        function zoomIn() {
+            map.setZoom(map.getZoom() + 1);
+        }
+
+        function zoomOut() {
+            map.setZoom(map.getZoom() - 1);
+        }
+
+        function centerMap() {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var pos = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                map.setCenter(pos);
+            }, function() {
+                console.error('Erro ao obter a localização do usuário.');
+            });
+        }
+
+        function showUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var pos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+
+                    map.setCenter(pos);
+                    map.setZoom(15);
+
+                    var marker = new H.map.Marker(pos);
+                    map.addObject(marker);
+                }, function() {
+                    console.error('Erro ao obter a localização do usuário.');
+                });
+            } else {
+                console.error('Geolocalização não suportada neste navegador.');
+            }
+        }
+    </script>
+</body>
+</html>
