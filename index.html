@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genesis Smart City</title>
+    <link rel="icon" href="assets/icon/logo.png" type="image/x-icon">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        #header {
+            background-color: orange;
+            color: white;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        #logo {
+            width: 40px;
+            margin-right: 10px;
+        }
+
+        #map {
+            height: calc(100% - 130px);
+            width: 100%;
+        }
+
+        #reportForm {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f3f3f3;
+        }
+
+        .orange-button {
+            background-color: orange;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+
+        .orange-button:hover {
+            background-color: darkorange;
+        }
+
+        .occurrences-box {
+            position: absolute;
+            top: 150px;
+            left: 10px;
+            background-color: #ffffff5c;
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend {
+            margin-top: 10px;
+        }
+
+        .legend-item {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .color-square {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+
+        .fullscreen-hidden {
+            display: none;
+        }
+
+        .fullscreen #header,
+        .fullscreen #reportForm {
+            display: none;
+        }
+
+        .fullscreen #map {
+            height: 100% !important;
+            width: 100% !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <img id="logo" src="assets/icon/logo.png" alt="Logo"> <!-- Inclui a logo -->
+        <h1 style="color: rgb(255, 255, 255); margin: 0;">Genesis Smart City</h1> <!-- Adiciona margem 0 para remover espaçamento adicional -->
+    </div>
+    <div id="reportForm">
+        <label for="occurrenceType">Tipo de Ocorrência:</label>
+        <select id="occurrenceType">
+            <option value="dengue">Foco de Mosquitos da Dengue</option>
+            <option value="covid">Foco de COVID-19</option>
+            <option value="sewage">Esgoto a Céu Aberto</option>
+            <option value="unpavedRoad">Via sem Pavimento</option>
+            <option value="noStreetLights">Falta de Iluminação Pública</option>
+            <option value="abandonedVehicle">Veículo Abandonado em Via Pública</option>
+            <option value="debris">Entulho/Lixo em Geral</option>
+            <option value="pothole">Buraco na Via</option>
+            <!-- Adicionei novos tipos de ocorrências -->
+        </select>
+        <input type="text" id="address" placeholder="Digite o endereço">
+        <button class="orange-button" onclick="reportOccurrence()">Reportar Ocorrência</button>
+        <button class="orange-button" onclick="centerMap()">Centralizar Mapa</button>
+        <button class="orange-button" onclick="showUserLocation()">Minha localização</button>
+        <button class="orange-button" onclick="toggleFullScreen()">Tela Inteira</button>
+    </div>
+    <div id="map"></div>
+
+    <!-- Conteúdo da caixa de ocorrências -->
+    <div id="occurrencesBox" class="occurrences-box">
+        <h3>Ocorrências</h3>
+        <div id="legend" class="legend"></div> 
+    </div>
+    
+    <script>
+        // Função para adicionar uma ocorrência à caixa de ocorrências
+        function addOccurrenceToLegend(occurrenceType, color) {
+            var legend = document.getElementById('legend');
+    
+            // Cria um elemento div para representar a ocorrência
+            var occurrenceDiv = document.createElement('div');
+            occurrenceDiv.className = 'legend-item';
+            
+            // Cria um quadrado pequeno com a cor da ocorrência
+            var colorSquare = document.createElement('div');
+            colorSquare.className = 'color-square';
+            colorSquare.style.backgroundColor = color;
+    
+            // Cria um texto com o nome da ocorrência
+            var occurrenceName = document.createElement('span');
+            occurrenceName.textContent = occurrenceType;
+    
+            // Adiciona o quadrado de cor e o nome da ocorrência ao elemento div
+            occurrenceDiv.appendChild(colorSquare);
+            occurrenceDiv.appendChild(occurrenceName);
+    
+            // Adiciona o elemento div à caixa de legendas
+            legend.appendChild(occurrenceDiv);
+        }
+    
+        // Adiciona todas as ocorrências à caixa de ocorrências
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mapeia os tipos de ocorrências e suas cores correspondentes
+            var occurrences = [
+                { type: 'Foco de Mosquitos da Dengue', color: 'black' },
+                { type: 'Foco de COVID-19', color: 'red' },
+                { type: 'Esgoto a Céu Aberto', color: 'brown' },
+                { type: 'Via sem Pavimento', color: 'gray' },
+                { type: 'Falta de Iluminação Pública', color: 'yellow' },
+                { type: 'Veículo Abandonado em Via Pública', color: 'green' },
+                { type: 'Entulho/Lixo em Geral', color: 'purple' },
+                { type: 'Buraco na Via', color: 'blue' }
+                // Adicione outras ocorrências conforme necessário
+            ];
+    
+            // Adiciona cada ocorrência à caixa de ocorrências
+            occurrences.forEach(function(occurrence) {
+                addOccurrenceToLegend(occurrence.type, occurrence.color);
+            });
+        });
+    </script>
+
+
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+    <script>
+        var platform = new H.service.Platform({
+            'apikey': 'GTiOwyjeq6Nck4wUzQq0yKlKbrdIN8Z8zB9Ny1gb5jM'
+        });
+    
+        var defaultLayers = platform.createDefaultLayers();
+        var map = new H.Map(
+            document.getElementById('map'),
+            defaultLayers.vector.normal.map,
+            {
+                zoom: 12,
+                center: { lat: -14.235004, lng: -51.92528 } // Centro do Brasil
+            }
+        );
+    
+        var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+        var ui = H.ui.UI.createDefault(map, defaultLayers);
+    
+        var mapSettings = ui.getControl('mapsettings');
+        var zoom = ui.getControl('zoom');
+    
+        var mobileControls = new H.ui.GroupControls([
+            zoom,
+            mapSettings
+        ]);
+    
+        ui.addControl('mobileControls', mobileControls);
+    
+        var isDragging = false;
+        var lastMousePosition = { x: 0, y: 0 };
+    
+        map.addEventListener('pointerdown', function(event) {
+            isDragging = true;
+            lastMousePosition = map.screenToGeo(event.currentPointer.viewportX, event.currentPointer.viewportY);
+        });
+    
+        map.addEventListener('pointermove', function(event) {
+            if (isDragging) {
+                var newMousePosition = map.screenToGeo(event.currentPointer.viewportX, event.currentPointer.viewportY);
+                var deltaX = newMousePosition.lng - lastMousePosition.lng;
+                var deltaY = newMousePosition.lat - lastMousePosition.lat;
+                map.setCenter({ lat: map.getCenter().lat + deltaY, lng: map.getCenter().lng + deltaX });
+                lastMousePosition = newMousePosition;
+            }
+        });
+    
+        map.addEventListener('pointerup', function() {
+            isDragging = false;
+        });
+          
+        function createIcon(color) {
+        var svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="${color}"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34  3-3 3z"/></svg>`;
+        return new H.map.Icon(svgMarkup);
+    }
+    
+        function addMarker(latitude, longitude, color, occurrenceName) {
+        var marker = new H.map.Marker({ lat: latitude, lng: longitude }, { icon: createIcon(color) });
+
+        // Cria um elemento HTML para representar o balão laranja
+        var balloon = document.createElement('div');
+        balloon.className = 'balloon';
+        balloon.style.position = 'absolute';
+        balloon.style.top = '-20px'; // Ajusta a posição verticalmente para cima em relação ao marcador
+        balloon.style.left = '-10px'; // Ajusta a posição horizontalmente para a esquerda do marcador
+        balloon.style.background = 'orange';
+        balloon.style.width = '20px';
+        balloon.style.height = '20px';
+        balloon.style.borderRadius = '50%';
+        balloon.style.zIndex = '-1'; // Define uma ordem de empilhamento para que o balão fique atrás do marcador
+
+        // Adiciona o balão ao mapa
+        map.addObject(marker);
+        map.getElement().appendChild(balloon);
+
+        marker.addEventListener('pointerenter', function(event) {
+            var markerPosition = map.geoToScreen(marker.getGeometry());
+
+            var infoBalloon = document.createElement('div');
+            infoBalloon.className = 'info-balloon';
+            infoBalloon.style.position = 'absolute';
+            infoBalloon.style.top = (markerPosition.y - 60) + 'px'; // Posiciona o balão acima do marcador
+            infoBalloon.style.left = (markerPosition.x + 40) + 'px'; // Posiciona o balão à direita do marcador
+            infoBalloon.innerHTML = `<div class="info-balloon-content" style="background-color: orange; padding: 5px; border-radius: 5px;">${occurrenceName}</div>`;
+            map.getElement().appendChild(infoBalloon); // Adiciona o balão ao elemento do mapa
+        });
+        marker.addEventListener('pointerleave', function(event) {
+            var infoBalloons = document.querySelectorAll('.info-balloon');
+            infoBalloons.forEach(function(infoBalloon) {
+                infoBalloon.parentNode.removeChild(infoBalloon);
+            });
+        });
+    }
+
+
+    
+        async function reportOccurrence() {
+            var occurrenceType = document.getElementById('occurrenceType').value;
+            var color = '';
+    
+            switch (occurrenceType) {
+                case 'dengue':
+                    color = 'black'; // Alterado para preto para Foco de Mosquitos da Dengue
+                    break;
+                case 'covid':
+                    color = 'red'; // Mantido como vermelho para Foco de COVID-19
+                    break;
+                case 'sewage':
+                    color = 'brown'; // Esgoto ao Céu Aberto
+                    break;
+                case 'unpavedRoad':
+                    color = 'gray'; // Via sem Pavimento
+                    break;
+                case 'noStreetLights':
+                    color = 'yellow'; // Falta de Iluminação Pública
+                    break;
+
+                    case 'abandonedVehicle':
+                    color = 'green'; // Falta de Iluminação Pública
+                    break;
+                    case 'debris':
+                    color = 'purple'; // Falta de Iluminação Pública
+                    break;
+                    case 'pothole':
+                    color = 'yellow'; // Falta de Iluminação Pública
+                    break;
+                // Adicionei cores para os novos tipos de ocorrências
+                default:
+                    color = 'green'; // Mantido como verde para Outros
+                    break;
+            }
+    
+            var address = document.getElementById('address').value;
+            try {
+                var geocodingService = platform.getSearchService();
+                var geocodeParams = {
+                    q: address
+                };
+                var result = await new Promise((resolve, reject) => {
+                    geocodingService.geocode(geocodeParams, resolve, reject);
+                });
+                var latitude = result.items[0].position.lat;
+                var longitude = result.items[0].position.lng;
+    
+                var occurrenceName = document.getElementById('occurrenceType').options[document.getElementById('occurrenceType').selectedIndex].text;
+                addMarker(latitude, longitude, color, occurrenceName);
+                map.setCenter({ lat: latitude, lng: longitude });
+            } catch (error) {
+                console.error('Erro ao geocodificar o endereço:', error);
+                alert('Erro ao geocodificar o endereço. Por favor, verifique e tente novamente.');
+            }
+        }
+    
+        function centerMap() {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var pos = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+    
+                map.setCenter(pos);
+            }, function() {
+                console.error('Erro ao obter a localização do usuário.');
+            });
+        }
+    
+        function showUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var pos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+    
+                    map.setCenter(pos);
+                    map.setZoom(15);
+    
+                    var marker = new H.map.Marker(pos);
+                    map.addObject(marker);
+                }, function() {
+                    console.error('Erro ao obter a localização do usuário.');
+                });
+            } else {
+                console.error('Geolocalização não suportada neste navegador.');
+            }
+        }
+
+        var isFullScreen = false; // Variável global para rastrear o estado de tela cheia
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch((err) => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function addOccurrenceToLegend(occurrenceType, color) {
+            var legend = document.getElementById('legend');
+            var occurrenceDiv = document.createElement('div');
+            occurrenceDiv.className = 'legend-item';
+            var colorSquare = document.createElement('div');
+            colorSquare.className = 'color-square';
+            colorSquare.style.backgroundColor = color;
+            var occurrenceName = document.createElement('span');
+            occurrenceName.textContent = occurrenceType;
+            occurrenceDiv.appendChild(colorSquare);
+            occurrenceDiv.appendChild(occurrenceName);
+            legend.appendChild(occurrenceDiv);
+        }
+
+        document.addEventListener('fullscreenchange', function() {
+            if (document.fullscreenElement) {
+                document.getElementById('header').classList.add('fullscreen-hidden');
+                document.getElementById('reportForm').classList.add('fullscreen-hidden');
+                document.getElementById('map').style.height = '100%';
+                document.getElementById('map').style.width = '100%';
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.getElementById('header').classList.remove('fullscreen-hidden');
+                document.getElementById('reportForm').classList.remove('fullscreen-hidden');
+                document.getElementById('map').style.height = 'calc(100% - 130px)';
+                document.getElementById('map').style.width = '100%';
+                document.body.style.overflow = 'auto';
+            }
+            map.getViewPort().resize();
+        });
+    </script>
+</body>
+</html>
