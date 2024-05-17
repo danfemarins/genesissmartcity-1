@@ -372,11 +372,11 @@
 
         function toggleFullScreen() {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch((err) => {
-                    alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                });
+                document.documentElement.requestFullscreen();
             } else {
-                document.exitFullscreen();
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
             }
         }
 
@@ -396,19 +396,10 @@
 
         document.addEventListener('fullscreenchange', function() {
             if (document.fullscreenElement) {
-                document.getElementById('header').classList.add('fullscreen-hidden');
-                document.getElementById('reportForm').classList.add('fullscreen-hidden');
-                document.getElementById('map').style.height = '100%';
-                document.getElementById('map').style.width = '100%';
-                document.body.style.overflow = 'hidden';
+                document.body.classList.add('fullscreen');
             } else {
-                document.getElementById('header').classList.remove('fullscreen-hidden');
-                document.getElementById('reportForm').classList.remove('fullscreen-hidden');
-                document.getElementById('map').style.height = 'calc(100% - 130px)';
-                document.getElementById('map').style.width = '100%';
-                document.body.style.overflow = 'auto';
+                document.body.classList.remove('fullscreen');
             }
-            map.getViewPort().resize();
         });
     </script>
 </body>
