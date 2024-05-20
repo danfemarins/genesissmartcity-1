@@ -11,6 +11,7 @@
             padding: 0;
             height: 100%;
             font-family: Arial, sans-serif;
+            overflow: hidden; /* Impede a barra de rolagem */
         }
 
         #header {
@@ -96,6 +97,17 @@
             left: 0;
             z-index: 9999;
         }
+
+        /* Estilo do rodapé */
+        #footer {
+            background-color: orange;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -121,6 +133,8 @@
         <button class="orange-button" onclick="centerMap()">Centralizar Mapa</button>
         <button class="orange-button" onclick="showUserLocation()">Minha localização</button>
         <button class="orange-button" onclick="toggleFullScreen()">Tela Inteira</button>
+        <button class="orange-button" onclick="showUserLocation()">Minha localização</button>
+        <button class="orange-button" onclick="window.location.href = 'teste.html'">Segurança pública</button>
     </div>
     <div id="map"></div>
 
@@ -130,6 +144,11 @@
         <div id="legend" class="legend"></div> 
     </div>
     
+        <!-- Rodapé -->
+        <div id="footer">
+            Genesis Smart City - Todos os direitos reservados
+        </div>
+
     <script>
         // Função para adicionar uma ocorrência à caixa de ocorrências
         function addOccurrenceToLegend(occurrenceType, color) {
@@ -305,7 +324,7 @@
                     color = 'purple'; // Falta de Iluminação Pública
                     break;
                     case 'pothole':
-                    color = 'yellow'; // Falta de Iluminação Pública
+                    color = 'blue'; //Buraco na Via
                     break;
                 // Adicionei cores para os novos tipos de ocorrências
                 default:
