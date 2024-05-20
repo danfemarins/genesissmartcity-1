@@ -15,7 +15,7 @@ jobs:
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        server: ftp.rotasseguras.com.br
-        username: u767096833.genesissmartcity.com.br
-        password: Anomcy&15.
+        server: ${{ secrets.FTP_SERVER }} 
+        username:  ${{ secrets.FTP_USERNAME }} 
+        password: ${{ secrets.FTP_PASSWORD }}
    
